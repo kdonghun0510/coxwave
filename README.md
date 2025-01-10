@@ -59,7 +59,23 @@ OPENAI_API_KEY=your_openai_api_key
 
 ---
 
-### 3. 실행
+### 3. DB 설정
+
+1. 데이터베이스 생성
+
+```bash
+psql -U postgres -d coxwave
+```
+
+2. 임베딩 데이터 임포트
+
+```bash
+psql -U postgres -d coxwave -f coxwave_backup.sql
+```
+
+---
+
+### 4. 실행
 
 서버 실행
 
