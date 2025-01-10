@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>WebSocket Chat</title>
+		<style>
+			body {
+				font-family: Arial, sans-serif;
+				margin: 20px;
+			}
+			#chatbox {
+				width: inherit;
+				height: 400px;
+				border: 1px solid #ccc;
+				overflow-y: auto;
+				margin: 10px;
+			}
+			#inputContainer {
+				width: inherit;
+				padding: 10px;
+				display: flex;
+			}
+			#message {
+				flex: 1;
+			}
+			#send {
+				padding: 10px;
+			}
+		</style>
+	</head>
+	<body>
+		<h1>COXWAVE - 네이버 스마트 스토어 QNA CHAT-BOT</h1>
+		<div id="chatbox"></div>
+		<div id="inputContainer">
+			<input
+				type="text"
+				id="message"
+				placeholder="스마트스토어에 대한 질문을 입력해주세요."
+			/>
+			<button id="send">보내기</button>
+		</div>
+
+		<script>
+			let ws;
+			let typingIndicator; // 응답 대기 중 애니메이션 요소
+
+			// DOM 요소
+			const chatbox = document.getElementById("chatbox");
+			const messageInput = document.getElementById("message");
+			const sendButton = document.getElementById("send");
+
+			// 초기화: 과거 데이터를 가져오고 WebSocket 연결
+			async function initializeChat() {
+				try {
+					const response = await fetch("http://localhost:8080/history");
+					if (!response.ok) {
+						throw new Error(`HTTP error! status: ${response.status}`);
+					}
+					const data = await response.json();
+
+					if (data.previous_chats) {
+						data.previous_chats.forEach((chat) => {
+							const parsedAnswer = JSON.parse(chat.answer);
+							appendMessage(`You: ${chat.question}`);
+							appendMessage(`Bot: ${parsedAnswer.answer}`);
+						});
+						appendMessage(`------------ history ------------`);
+					}
+				} catch (error) {
+					console.error("Error initializing chat:", error);
+				}
+			}
+
+			// WebSocket 연결 함수
+			function initializeWebSocket() {
+				ws = new WebSocket("ws://localhost:8080/chat");
+
+				ws.onopen = () => {
+					console.log("Connected to the server");
+				};
+
+				ws.onmessage = (event) => {
+					try {
+						// 서버 응답 시 'Bot: 답변 중...' 제거
+						if (typingIndicator) {
+							chatbox.removeChild(typingIndicator);
+							typingIndicator = null;
+						}
+
+						const parsedData = JSON.parse(event.data);
+						appendMessage(`Bot: ${parsedData.answer}`);
+						if (parsedData?.recommend1)
+							appendMessage(`   - ${parsedData.recommend1}`);
+						if (parsedData?.recommend2)
+							appendMessage(`   - ${parsedData.recommend2}`);
+					} catch (e) {
+						console.error("Error parsing server response:", e);
+					}
+				};
+
+				ws.onclose = () => {
+					console.log("Disconnected from the server");
+				};
+
+				ws.onerror = (error) => {
+					console.error("WebSocket error:", error);
+				};
+			}
+
+			// 메시지 전송 버튼 클릭 이벤트
+			sendButton.addEventListener("click", () => {
+				const message = messageInput.value;
+				if (message.trim() !== "") {
+					const payload = {
+						query: message,
+					};
+					ws.send(JSON.stringify(payload));
+					appendMessage("You: " + message);
+					messageInput.value = "";
+
+					// 'Bot: 답변 중...' 표시
+					showTypingIndicator();
+				}
+			});
+
+			// Enter 키로 메시지 전송
+			messageInput.addEventListener("keypress", (event) => {
+				if (event.key === "Enter") {
+					sendButton.click();
+				}
+			});
+
+			// 메시지를 채팅창에 추가하는 함수
+			function appendMessage(message) {
+				const messageElement = document.createElement("div");
+				messageElement.textContent = message;
+				messageElement.style.marginBlock = "4px";
+				chatbox.appendChild(messageElement);
+				chatbox.scrollTop = chatbox.scrollHeight;
+			}
+
+			// 'Bot: 답변 중...' 애니메이션 표시
+			function showTypingIndicator() {
+				// 이미 표시 중이라면 추가하지 않음
+				if (typingIndicator) return;
+
+				typingIndicator = document.createElement("div");
+				typingIndicator.textContent = "Bot: 답변 중...";
+				chatbox.appendChild(typingIndicator);
+				chatbox.scrollTop = chatbox.scrollHeight;
+			}
+
+			// 채팅 초기화 실행
+			initializeChat();
+			initializeWebSocket();
+		</script>
+	</body>
+</html>
