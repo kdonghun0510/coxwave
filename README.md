@@ -44,13 +44,30 @@ go mod tidy
 
 ---
 
-### 2. 실행
+### 2. 환경 변수 설정
+
+`.env` 파일을 생성하고 다음과 같은 환경 변수를 설정하세요:
+
+```plantext
+SERVER_PORT=8080
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=your_db_user
+DB_PASSWORD=your_db_password
+OPENAI_API_KEY=your_openai_api_key
+```
+
+---
+
+### 3. 실행
 
 서버 실행
 
 ```bash
 go run main.go
 ```
+
+---
 
 클라이언트
 
